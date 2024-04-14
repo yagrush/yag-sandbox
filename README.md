@@ -9,7 +9,7 @@
 #### composer install: mac
 ```
 brew install composer
-composer require --dev friendsofphp/php-cs-fixer
+cd application
 composer install
 ```
 
