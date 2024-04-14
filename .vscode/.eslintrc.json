@@ -1,0 +1,52 @@
+{
+    "env": {
+        "browser": true,
+        "es6": true
+    },
+    "extends": [
+        "eslint:recommended",
+        "plugin:react/recommended",
+        "plugin:prettier/recommended"
+    ],
+    "globals": {
+        "Atomics": "readonly",
+        "SharedArrayBuffer": "readonly"
+    },
+    "parserOptions": {
+        "ecmaFeatures": {
+            "jsx": true
+        },
+        "ecmaVersion": 2018,
+        "sourceType": "module"
+    },
+    "plugins": ["react"],
+    "parser": "babel-eslint",
+    "rules": {
+        "indent": [1, 2],
+        "prettier/prettier": [
+            "error",
+            {
+                "printWidth": 100,
+                "tabWidth": 4,
+                "useTabs": false,
+                "semi": true,
+                "singleQuote": true,
+                "quoteProps": "as-needed",
+                "jsxSingleQuote": false,
+                "trailingComma": "es5",
+                "bracketSpacing": true,
+                "jsxBracketSameLine": false,
+                "arrowParens": "avoid",
+                "rangeStart": 0,
+                "filepath": "none",
+                "requirePragma": false,
+                "insertPragma": false,
+                "proseWrap": "preserve",
+                "htmlWhitespaceSensitivity": "css",
+                "vueIndentScriptAndStyle": false,
+                "endOfLine": "lf",
+                "embeddedLanguageFormatting": "auto"
+            }
+        ]
+    }
+}
