@@ -3,6 +3,16 @@
 色々遊ぶ場
 Laravel 11 + Laravel Sail
 
+
+## setup
+1. `application/.env.example` をコピーして `.env` に改名
+2. `.env` の中身を自分の環境に合わせてカスタマイズする
+3. 必要なPHPライブラリをインストールする
+```
+cd application
+composer install
+```
+
 ## start all
 ```
 make up-dd

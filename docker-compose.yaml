@@ -130,7 +130,7 @@ services:
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
         volumes:
             - './application:/var/www/html'
-            - './application/build/php.ini:/etc/php/8.3/cli/conf.d/99-sail.ini' # application/vendor/laravel/sail/runtimes/8.3/php.ini
+            - './application/docker/php.ini:/etc/php/8.3/cli/conf.d/99-sail.ini' # application/vendor/laravel/sail/runtimes/8.3/php.ini
         networks:
             - sail
         depends_on:
