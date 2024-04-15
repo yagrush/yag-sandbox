@@ -3,7 +3,7 @@
     "commands": [
       {
         "match": "\\.php$",
-        "cmd": "${workspaceRoot}/vendor/bin/php-cs-fixer fix --config=${workspaceRoot}/.vscode/.php-cs-fixer.php ${file}",
+        "cmd": "${workspaceRoot}/vendor/bin/php-cs-fixer fix --config=${workspaceRoot}/application/.php-cs-fixer.php ${file}",
         "useShortcut": false,
         "silent": false
       }
@@ -17,6 +17,6 @@
   "[javascript][javascriptreact][json][jsonc]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
-  },
-  "prettier.configPath": ".vscode/.prettierrc.json"
+  }
+  //   "prettier.configPath": ".vscode/.prettierrc.json"
 }

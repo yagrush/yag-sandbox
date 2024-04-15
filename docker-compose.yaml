@@ -1,8 +1,8 @@
 version: '3'
 services:
     kvs:
-        container_name: yag-kvs
-        image: yag-kvs
+        container_name: kvs
+        image: kvs
         restart: always
         # platform: linux/x86_64
         platform: linux/arm64 # M1 Mac
@@ -10,17 +10,26 @@ services:
             context: .
             dockerfile: ./kvs/Dockerfile
         ports:
-            - 6379:6379
+            - '${FORWARD_REDIS_PORT:-6379}:6379'
         volumes:
             - ./kvs/data:/data
             - ./kvs/log:/var/log/redis
             - ./kvs/redis.conf:/usr/local/etc/redis/redis.conf
         command: redis-server /usr/local/etc/redis/redis.conf
         user: 1000:1000
+        networks:
+            - sail
+        healthcheck:
+            test:
+                - CMD
+                - redis-cli
+                - ping
+            retries: 3
+            timeout: 5s
 
     db:
-        container_name: yag-db
-        image: yag-db
+        container_name: db
+        image: db
         restart: always
         # platform: linux/x86_64
         platform: linux/arm64 # M1 Mac
@@ -28,57 +37,164 @@ services:
             context: .
             dockerfile: ./db/Dockerfile
         ports:
-            - 3306:3306
+            - '${FORWARD_DB_PORT:-3306}:3306'
         volumes:
             - ./db/conf/:/etc/mysql/conf.d
-            - sample-db-local:/var/lib/mysql
+            - laravel-db-local:/var/lib/mysql
             - ./db/log/:/tmp/log
         user: 1000:1000
         environment:
-            MYSQL_ROOT_PASSWORD: pass
-            MYSQL_DATABASE: sample
-            MYSQL_USER: sample
-            MYSQL_PASSWORD: sample
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ROOT_HOST: '%'
+            MYSQL_DATABASE: '${DB_DATABASE}'
+            MYSQL_USER: '${DB_USERNAME}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
             # TZ: ${TZ} # world wideなサービスならUTC+0にしたい
+        networks:
+            - sail
+        healthcheck:
+            test:
+                - CMD
+                - mysqladmin
+                - ping
+                - '-p${DB_PASSWORD}'
+            retries: 3
+            timeout: 5s
 
-    phpfpm:
-      # platform: linux/x86_64
-      platform: linux/arm64 # M1 Mac
-      build:
-        context: ./php
-        dockerfile: Dockerfile
-      container_name: yag-phpfpm
-      # environment:
-      #   AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
-      #   AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"
-      depends_on:
-      - kvs
-      - db
-      volumes:
-      - ./application:/var/www/html
-      - phpsocket:/var/php-fpm
-    #   tty: true
+    meilisearch:
+        container_name: meilisearch
+        image: 'getmeili/meilisearch:latest'
+        # platform: linux/x86_64
+        platform: linux/arm64 # M1 Mac
+        ports:
+            - '${FORWARD_MEILISEARCH_PORT:-7700}:7700'
+        environment:
+            MEILI_NO_ANALYTICS: '${MEILISEARCH_NO_ANALYTICS:-false}'
+        volumes:
+            - 'sail-meilisearch:/meili_data'
+        networks:
+            - sail
+        healthcheck:
+            test:
+                - CMD
+                - wget
+                - '--no-verbose'
+                - '--spider'
+                - 'http://localhost:7700/health'
+            retries: 3
+            timeout: 5s
 
-    nginx:
-      restart: always
-      image: nginx:1
-    #   platform: linux/x86_64
-      platform: linux/arm64 # M1 Mac
-      container_name: yag-nginx
-      depends_on:
-      - kvs
-      - db
-      - phpfpm
-      ports:
-      - 8080:80
-      volumes:
-      - ./application:/var/www/html
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-      - phpsocket:/var/php-fpm
-      - ./nginx/log:/var/log/nginx
+    mailpit:
+        container_name: mailpit
+        image: 'axllent/mailpit:latest'
+        # platform: linux/x86_64
+        platform: linux/arm64 # M1 Mac
+        ports:
+            - '${FORWARD_MAILPIT_PORT:-1025}:1025'
+            - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
+        networks:
+            - sail
+
+    selenium:
+        container_name: selenium
+        image: seleniarm/standalone-chromium
+        # platform: linux/x86_64
+        platform: linux/arm64 # M1 Mac
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        volumes:
+            - '/dev/shm:/dev/shm'
+        networks:
+            - sail
+
+    # WEBサービスに Laravel Sail を使う場合
+    laravel:
+        container_name: laravel
+        build:
+            context: ./application/vendor/laravel/sail/runtimes/8.3
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: sail-8.3/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-80}:80'
+            - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+            IGNITION_LOCAL_SITES_PATH: '${PWD}'
+        volumes:
+            - './application:/var/www/html'
+            - './application/build/php.ini:/etc/php/8.3/cli/conf.d/99-sail.ini' # application/vendor/laravel/sail/runtimes/8.3/php.ini
+        networks:
+            - sail
+        depends_on:
+            - db
+            - kvs
+            - meilisearch
+            - mailpit
+            - selenium
+
+    # 旧来の nginx + phpfpm 構成の場合
+    # phpfpm:
+    #   container_name: phpfpm
+    #   # platform: linux/x86_64
+    #   platform: linux/arm64 # M1 Mac
+    #   build:
+    #     context: ./php
+    #     dockerfile: Dockerfile
+    #   # environment:
+    #   #   AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
+    #   #   AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"
+    #   depends_on:
+    #   - kvs
+    #   - db
+    #   - meilisearch
+    #   - mailpit
+    #   - selenium
+    #   volumes:
+    #   - ./application:/var/www/html
+    #   - phpsocket:/var/php-fpm
+    #   networks:
+    #       - sail
+
+    # nginx:
+    #   container_name: nginx
+    #   restart: always
+    #   image: nginx:1
+    # #   platform: linux/x86_64
+    #   platform: linux/arm64 # M1 Mac
+    #   depends_on:
+    #   - kvs
+    #   - db
+    #   - phpfpm
+    #   - meilisearch
+    #   - mailpit
+    #   - selenium
+    #   ports:
+    #   - 8001:80
+    #   volumes:
+    #   - ./application:/var/www/html
+    #   - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    #   - phpsocket:/var/php-fpm
+    #   - ./nginx/log:/var/log/nginx
+    #   networks:
+    #       - sail
+
+networks:
+    sail:
+        driver: bridge
 
 volumes:
   phpsocket:
-    
+
   # 名前付きボリュームを消すと docker-entrypoint-initdb.d がまた走る
-  sample-db-local:
+  laravel-db-local:
+    driver: local
+  sail-meilisearch:
+    driver: local

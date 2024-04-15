@@ -5,12 +5,20 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Listen for Xdebug",
+      "name": "Xdebug: Laravel Sail",
       "type": "php",
       "request": "launch",
       "port": 9003,
       "pathMappings": {
-        "/var/www/html/": "${workspaceFolder}/application",
+        "/var/www/html/": "${workspaceFolder}/application"
+      },
+      //   "hostname": "localhost",
+      "ignore": ["**/vendor/**/*.php"],
+      "xdebugSettings": {
+        "max_data": 65536,
+        "show_hidden": 1,
+        "max_children": 100,
+        "max_depth": 3
       }
     },
     {
@@ -25,7 +33,7 @@
         "XDEBUG_MODE": "debug,develop",
         "XDEBUG_CONFIG": "client_port=${port}"
       }
-    },
+    }
     // {
     //   "name": "Launch Built-in web server",
     //   "type": "php",
