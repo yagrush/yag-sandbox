@@ -1,4 +1,5 @@
-FROM php:8.1-fpm-buster as phpbase
+# FROM php:8.1-fpm-buster as phpbase
+FROM php:8.3-fpm as phpbase
 
 ENV LANG ja_JP.UTF-8
 
@@ -11,7 +12,6 @@ RUN cat /etc/group | sed s/33/1000/g > /tmp/pwgroup && \
 
 RUN apt-get update && apt-get install -y \
         libxml2-dev \
-        python \
         supervisor \
         libpng-dev \
         lsyncd \
